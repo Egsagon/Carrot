@@ -2,7 +2,9 @@
 Carrot module. 🥕yay🥕
 """
 
+from concurrent.futures.process import _threads_wakeups
 import json
+from typing import Union
 from io import TextIOWrapper
 
 
@@ -25,7 +27,9 @@ class BaseCarrot:
         self.lines: list = None
 
         if _doParse: self.parse()
-        self.isOk = self.verify_integrity()
+        # self.isOk = self.verify_integrity()
+
+        self.isSorted = False
     
     def __str__(self) -> str:
         """
@@ -43,7 +47,7 @@ class BaseCarrot:
         self.lines = list(map(lambda l: tuple(l.split(self.sep)), self.file.read().rstrip().split('\n')))
         self.columns = self.lines.pop(0)
     
-    def verify_integrity(self, _ErrorValue: str = None) -> bool:
+    def _verify_integrity(self, _ErrorValue: str = None) -> bool:
         """
         Verify if all the lines have the same length than the first one.
         Returns True if test passed else False or an error value.
@@ -84,6 +88,16 @@ class BaseCarrot:
 
         self.file.write(raw)
 
+    def correctType(self, _submit = True) -> None:
+        """
+        Attempts to correct the type of each slot.
+        For instance, string '4' will be changed as int 4.
+        """
+
+        for line in self.lines: line = [eval(el) for el in line]
+
+        if _submit: self.submit()
+
     # === Read methods === #
 
     def find(self, column_name: str, data: str) -> tuple:
@@ -112,6 +126,44 @@ class BaseCarrot:
 
         return matchs if len(matchs) else None
     
+    def findCriteria(self, criteria: dict = None) -> list:
+        """
+        Find all occurences that correspond to the given criterias.
+        Criteria can be a value: {'columnName': 'matchingValue'}
+        Or a function that will return wether the value correspond : {'columnName': isValid}
+        (where isValid is a function).
+
+        If you want criterias to handle multiple values / functions per line, use a tuple to enter the values / functions.
+        """
+
+        matchs = []
+
+        for line in self.lines:
+            for col, value in criteria:
+                col_id = self._column_id(col)
+
+                # if crit is a tuple, iterate trou it.
+                if isinstance(value, tuple):
+                    for crit in value:
+                        
+                        # if value is string -> check if value match
+                        if isinstance(value, str):
+                            if line[col_id] == value: matchs.append(line)
+                        
+                        # if value is function -> let it decide
+                        elif isinstance(value, function):
+                            if value(line[col_id]): matchs.append(line)
+                
+                # else, same thing but with no iteration (sad)
+                else:
+                    if isinstance(value, str):
+                        if line[col_id] == value: matchs.append(line)
+                    
+                    elif isinstance(value, function):
+                        if value(line[col_id]): matchs.append(line)
+
+        return matchs
+
     def getColumn(self, column_name: str) -> list:
         """
         Attempts to get all the properties matching a column.
@@ -225,6 +277,62 @@ class BaseCarrot:
         out = {'columns': self.columns, 'content': self.toDict()}
 
         return json.dumps(out)
+
+    # === Verification methods === #
+
+    def verify_types(self, columnTypes: list) -> bool:
+        """
+        Verify the types of each slot, given a list of types.
+        """
+
+        if not len(columnTypes): raise CarrotError('Hum, you forgot the types list.')
+
+        pass
+
+    def verify_integrity(self) -> bool:
+        """
+        Verify if there is a missing / higher slot for each line.
+        """
+        
+        # TODO: migrate this function here.
+        self._verify_integrity()
+
+    def verify_doubles(self, _forceSorted = False) -> tuple(bool, Union[None, list]):
+        """
+        Check if there is no doubles in the lines.
+        Will use a faster method if the list is already sorted (sort using self.sort)
+        or by forcing using the _forceSorted bool.
+        """
+
+        if _forceSorted or self.isSorted:
+            # Iterate throu aaaaaall elements
+            
+            pass
+        
+        else:
+            # faster method
+
+            pass
+    
+    # === Sorting functions === #
+
+    def sortColumns(self, order: list, _submit = True) -> None:
+        """
+        Change the order of the columns and of the slot.
+        A list of columns can be found by calling the "self.columns" variable.
+        """
+
+        pass
+
+    def sort(self, sortingColumn: str, _submit = True) -> None:
+        """
+        Sort 
+        """
+
+        pass
+        
+        self.isSorted = True
+
 
 
 class Carrot(BaseCarrot):
